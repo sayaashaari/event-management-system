@@ -1,0 +1,7 @@
+{
+  "name": "event-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": { "dev": "python -m http.server 4173 --bind 127.0.0.1", "build": "node --check src/main.js", "test": "node src/registrationRules.test.js" }
+}
