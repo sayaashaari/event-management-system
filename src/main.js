@@ -368,12 +368,13 @@ function showParticipants(state = { search: '' }) {
       <main class="main-content">
         <header class="topbar"><span class="breadcrumb">Workspace <span>/</span> Participants</span><span class="status-pill"><i></i> Demo mode</span></header>
         <section class="page-content">
-          <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Participants</h1><p class="intro">Browse the people in your event directory.</p></div><span class="date-label">${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}</span></div>
+          <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Participants</h1><p class="intro">Browse the people in your event directory.</p></div><div><button class="primary-button" data-action="participant" type="button">Add participant</button><span class="date-label">${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}</span></div></div>
           <section class="events-panel participants-panel" aria-label="Participants list">
             <div class="events-toolbar"><label class="search-field"><span class="sr-only">Search participants</span><span aria-hidden="true">⌕</span><input id="participant-search" type="search" placeholder="Search name, email, phone or organisation…" value="${escapeHtml(state.search)}"></label></div>
             <div class="events-table-wrap"><table class="participants-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Organisation</th><th>Registration Count</th><th>Actions</th></tr></thead><tbody>${filteredParticipants.map((participant) => `<tr><td><strong>${escapeHtml(participant.name || 'Unnamed participant')}</strong></td><td>${escapeHtml(participant.email || '—')}</td><td>${escapeHtml(participant.phone || '—')}</td><td>${escapeHtml(participant.organisation || '—')}</td><td>${registrationCounts.get(participant.participantId) || 0}</td><td><button class="text-action" data-edit-participant="${escapeHtml(participant.participantId)}">Edit</button><button class="text-action danger-action" data-delete-participant="${escapeHtml(participant.participantId)}">Delete</button></td></tr>`).join('')}</tbody></table></div>
             ${filteredParticipants.length === 0 ? `<div class="events-empty"><span class="empty-icon" aria-hidden="true">♙</span><h2>${participants.length ? 'No matching participants' : 'No participants yet'}</h2><p>${participants.length ? 'Try another name, email, phone number, or organisation.' : 'Participants you add will appear here.'}</p></div>` : ''}
           </section>
+          <dialog class="action-dialog" id="action-dialog"><form id="action-form" method="dialog"><div class="dialog-heading"><h2 id="dialog-title">Add participant</h2><button class="icon-button" value="cancel" aria-label="Close">×</button></div><div id="dialog-fields"></div><p class="error" id="action-error" role="alert"></p><div class="dialog-actions"><button class="secondary-button" value="cancel">Cancel</button><button class="primary-button" id="save-action" value="default">Save</button></div></form></dialog>
           <p class="prototype-note">This is a workshop prototype. Demo sign-in is not production-grade security.</p>
         </section>
       </main>
@@ -408,6 +409,12 @@ function showParticipants(state = { search: '' }) {
   });
   app.querySelectorAll('[data-edit-participant]').forEach((button) => button.addEventListener('click', () => editParticipant(button.dataset.editParticipant)));
   app.querySelectorAll('[data-delete-participant]').forEach((button) => button.addEventListener('click', () => deleteParticipant(button.dataset.deleteParticipant)));
+  app.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', () => openAction(button.dataset.action)));
+  app.querySelector('#action-form').addEventListener('submit', (event) => {
+    if (event.submitter?.value === 'cancel') return;
+    event.preventDefault();
+    saveAction();
+  });
   syncParticipantsFromApi().then((remote) => {
     if (JSON.stringify(remote) !== localSnapshot && readAuth()) showParticipants({ search: state.search });
   }).catch(() => {});
