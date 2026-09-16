@@ -288,7 +288,7 @@ function showEvents(state = { search: '', status: 'All statuses', sort: 'asc' })
           <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Events</h1><p class="intro">Browse and find events in your workspace.</p></div><span class="date-label">${events.length} ${events.length === 1 ? 'event' : 'events'}</span></div>
           <section class="events-panel" aria-label="Events list">
             <div class="events-toolbar"><label class="search-field"><span class="sr-only">Search events</span><span aria-hidden="true">⌕</span><input id="event-search" type="search" placeholder="Search events or locations…" value="${escapeHtml(state.search)}"></label><label class="filter-control">Status<select id="event-status"><option${state.status === 'All statuses' ? ' selected' : ''}>All statuses</option>${['Draft', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled'].map((status) => `<option${state.status === status ? ' selected' : ''}>${status}</option>`).join('')}</select></label><label class="filter-control">Date order<select id="event-sort"><option value="asc"${state.sort === 'asc' ? ' selected' : ''}>Soonest first</option><option value="desc"${state.sort === 'desc' ? ' selected' : ''}>Latest first</option></select></label></div>
-            <div class="events-table-wrap"><table class="events-table"><thead><tr><th>Event Name</th><th>Date</th><th>Time</th><th>Location</th><th>Capacity</th><th>Status</th><th>Registration Count</th><th>Actions</th></tr></thead><tbody>${filteredEvents.map((event) => `<tr><td><strong>${escapeHtml(event.eventName || 'Untitled event')}</strong></td><td>${escapeHtml(formatDate(event.date))}</td><td>${escapeHtml(event.time || '—')}</td><td>${escapeHtml(event.location || '—')}</td><td>${Number(event.capacity) || 0}</td><td><span class="status-tag status-${escapeHtml(String(event.status || 'Draft').toLowerCase())}">${escapeHtml(event.status || 'Draft')}</span></td><td>${registrationCounts.get(event.eventId) || 0}</td><td><span class="actions-placeholder">—</span></td></tr>`).join('')}</tbody></table></div>
+            <div class="events-table-wrap"><table class="events-table"><thead><tr><th>Event Name</th><th>Date</th><th>Time</th><th>Location</th><th>Capacity</th><th>Status</th><th>Registration Count</th><th>Actions</th></tr></thead><tbody>${filteredEvents.map((event) => `<tr><td><strong>${escapeHtml(event.eventName || 'Untitled event')}</strong></td><td>${escapeHtml(formatDate(event.date))}</td><td>${escapeHtml(event.time || '—')}</td><td>${escapeHtml(event.location || '—')}</td><td>${Number(event.capacity) || 0}</td><td><span class="status-tag status-${escapeHtml(String(event.status || 'Draft').toLowerCase())}">${escapeHtml(event.status || 'Draft')}</span></td><td>${registrationCounts.get(event.eventId) || 0}</td><td><button class="text-action" data-edit-event="${escapeHtml(event.eventId)}">Edit</button><button class="text-action danger-action" data-delete-event="${escapeHtml(event.eventId)}">Delete</button></td></tr>`).join('')}</tbody></table></div>
             ${filteredEvents.length === 0 ? `<div class="events-empty"><span class="empty-icon" aria-hidden="true">▣</span><h2>${events.length ? 'No matching events' : 'No events yet'}</h2><p>${events.length ? 'Try changing your search or status filter.' : 'Events you create will appear here.'}</p></div>` : ''}
           </section>
           <p class="prototype-note">This is a workshop prototype. Demo sign-in is not production-grade security.</p>
@@ -333,6 +333,8 @@ function showEvents(state = { search: '', status: 'All statuses', sort: 'asc' })
     showEvents({ ...state, sort });
     app.querySelector('#event-sort').focus();
   });
+  app.querySelectorAll('[data-edit-event]').forEach((button) => button.addEventListener('click', () => editEvent(button.dataset.editEvent)));
+  app.querySelectorAll('[data-delete-event]').forEach((button) => button.addEventListener('click', () => deleteEvent(button.dataset.deleteEvent)));
 }
 
 function showParticipants(state = { search: '' }) {
@@ -369,7 +371,7 @@ function showParticipants(state = { search: '' }) {
           <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1>Participants</h1><p class="intro">Browse the people in your event directory.</p></div><span class="date-label">${participants.length} ${participants.length === 1 ? 'participant' : 'participants'}</span></div>
           <section class="events-panel participants-panel" aria-label="Participants list">
             <div class="events-toolbar"><label class="search-field"><span class="sr-only">Search participants</span><span aria-hidden="true">⌕</span><input id="participant-search" type="search" placeholder="Search name, email, phone or organisation…" value="${escapeHtml(state.search)}"></label></div>
-            <div class="events-table-wrap"><table class="participants-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Organisation</th><th>Registration Count</th><th>Actions</th></tr></thead><tbody>${filteredParticipants.map((participant) => `<tr><td><strong>${escapeHtml(participant.name || 'Unnamed participant')}</strong></td><td>${escapeHtml(participant.email || '—')}</td><td>${escapeHtml(participant.phone || '—')}</td><td>${escapeHtml(participant.organisation || '—')}</td><td>${registrationCounts.get(participant.participantId) || 0}</td><td><span class="actions-placeholder">—</span></td></tr>`).join('')}</tbody></table></div>
+            <div class="events-table-wrap"><table class="participants-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Organisation</th><th>Registration Count</th><th>Actions</th></tr></thead><tbody>${filteredParticipants.map((participant) => `<tr><td><strong>${escapeHtml(participant.name || 'Unnamed participant')}</strong></td><td>${escapeHtml(participant.email || '—')}</td><td>${escapeHtml(participant.phone || '—')}</td><td>${escapeHtml(participant.organisation || '—')}</td><td>${registrationCounts.get(participant.participantId) || 0}</td><td><button class="text-action" data-edit-participant="${escapeHtml(participant.participantId)}">Edit</button><button class="text-action danger-action" data-delete-participant="${escapeHtml(participant.participantId)}">Delete</button></td></tr>`).join('')}</tbody></table></div>
             ${filteredParticipants.length === 0 ? `<div class="events-empty"><span class="empty-icon" aria-hidden="true">♙</span><h2>${participants.length ? 'No matching participants' : 'No participants yet'}</h2><p>${participants.length ? 'Try another name, email, phone number, or organisation.' : 'Participants you add will appear here.'}</p></div>` : ''}
           </section>
           <p class="prototype-note">This is a workshop prototype. Demo sign-in is not production-grade security.</p>
@@ -404,6 +406,8 @@ function showParticipants(state = { search: '' }) {
     input.focus();
     input.setSelectionRange(cursor, cursor);
   });
+  app.querySelectorAll('[data-edit-participant]').forEach((button) => button.addEventListener('click', () => editParticipant(button.dataset.editParticipant)));
+  app.querySelectorAll('[data-delete-participant]').forEach((button) => button.addEventListener('click', () => deleteParticipant(button.dataset.deleteParticipant)));
   syncParticipantsFromApi().then((remote) => {
     if (JSON.stringify(remote) !== localSnapshot && readAuth()) showParticipants({ search: state.search });
   }).catch(() => {});
@@ -556,6 +560,38 @@ function showAttendance(eventId = '', feedback = '') {
     saveCollection('attendance', records);
     showAttendance(selectedEventId, `${button.dataset.status} status saved.`);
   }));
+}
+
+function editEvent(id) {
+  const events = readCollection('events'); const event = events.find((item) => item.eventId === id); if (!event) return;
+  const name = prompt('Event name', event.eventName); if (name === null) return;
+  const date = prompt('Date (YYYY-MM-DD)', event.date); if (date === null) return;
+  const location = prompt('Location', event.location); if (location === null) return;
+  const capacity = Number(prompt('Capacity', event.capacity)); if (!capacity || capacity < 1) return alert('Capacity must be greater than zero.');
+  event.eventName = name.trim(); event.date = date.trim(); event.location = location.trim(); event.capacity = capacity; saveCollection('events', events); showEvents();
+}
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event and its registrations and attendance?')) return;
+  saveCollection('events', readCollection('events').filter((item) => item.eventId !== id));
+  saveCollection('registrations', readCollection('registrations').filter((item) => item.eventId !== id));
+  saveCollection('attendance', readCollection('attendance').filter((item) => item.eventId !== id)); showEvents();
+}
+
+function editParticipant(id) {
+  const participants = readCollection('participants'); const participant = participants.find((item) => item.participantId === id); if (!participant) return;
+  const name = prompt('Name', participant.name); if (name === null) return;
+  const email = prompt('Email', participant.email); if (email === null) return;
+  if (participants.some((item) => item.participantId !== id && item.email.toLowerCase() === email.trim().toLowerCase())) return alert('A participant with this email already exists.');
+  const organisation = prompt('Organisation', participant.organisation); if (organisation === null) return;
+  participant.name = name.trim(); participant.email = email.trim().toLowerCase(); participant.organisation = organisation.trim(); saveCollection('participants', participants); showParticipants();
+}
+
+function deleteParticipant(id) {
+  if (!confirm('Delete this participant and related registrations and attendance?')) return;
+  saveCollection('participants', readCollection('participants').filter((item) => item.participantId !== id));
+  saveCollection('registrations', readCollection('registrations').filter((item) => item.participantId !== id));
+  saveCollection('attendance', readCollection('attendance').filter((item) => item.participantId !== id)); showParticipants();
 }
 
 function openAction(action) {
