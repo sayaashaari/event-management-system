@@ -9,6 +9,8 @@ const DATA_KEYS = {
 };
 const DEMO_USER = 'admin';
 const DEMO_PASSWORD = 'admin123';
+const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbxF1wRC-VSLLypgdAjAv4hoRzB8xa0Hio9E0x6kXUl54NhcFB1iKDshqaZqHOk3vFNt/exec';
+const API_TIMEOUT_MS = 2500;
 
 const app = document.querySelector('#app');
 
@@ -40,6 +42,40 @@ function readCollection(name) {
 
 function saveCollection(name, value) {
   localStorage.setItem(DATA_KEYS[name], JSON.stringify(value));
+}
+
+async function apiRequest(entity, operation = 'read', record = null, id = '') {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const isRead = operation === 'read';
+    const response = await fetch(isRead ? `${GOOGLE_SHEETS_API_URL}?entity=${encodeURIComponent(entity)}` : GOOGLE_SHEETS_API_URL, {
+      method: isRead ? 'GET' : 'POST',
+      headers: isRead ? undefined : { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: isRead ? undefined : JSON.stringify({ entity, operation, record, id }),
+      signal: controller.signal,
+    });
+    const payload = await response.json();
+    if (!response.ok || payload.ok === false) throw new Error(payload.error || 'Google Sheets request failed.');
+    return payload.data;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function syncParticipantsFromApi() {
+  const remote = await apiRequest('participants');
+  if (!Array.isArray(remote)) throw new Error('Invalid participants response.');
+  const local = readCollection('participants');
+  if (remote.length === 0 && local.length > 0) {
+    for (const participant of local) {
+      try { await apiRequest('participants', 'create', participant); } catch { /* local fallback remains available */ }
+    }
+    return local;
+  }
+  const merged = [...remote, ...local.filter((item) => !remote.some((record) => record.participantId === item.participantId))];
+  saveCollection('participants', merged);
+  return merged;
 }
 
 function seedDashboardData() {
@@ -307,6 +343,7 @@ function showParticipants(state = { search: '' }) {
   }
   seedDashboardData();
   const participants = readCollection('participants');
+  const localSnapshot = JSON.stringify(participants);
   const registrations = readCollection('registrations');
   const query = state.search.trim().toLowerCase();
   const filteredParticipants = participants.filter((participant) => `${participant.name} ${participant.email} ${participant.phone} ${participant.organisation}`.toLowerCase().includes(query));
@@ -367,6 +404,9 @@ function showParticipants(state = { search: '' }) {
     input.focus();
     input.setSelectionRange(cursor, cursor);
   });
+  syncParticipantsFromApi().then((remote) => {
+    if (JSON.stringify(remote) !== localSnapshot && readAuth()) showParticipants({ search: state.search });
+  }).catch(() => {});
 }
 
 function showRegistrations(feedback = '') {
@@ -558,7 +598,7 @@ function updateParticipantOptions() {
   participantSelect.innerHTML = participants.map((participant) => `<option value="${escapeHtml(participant.participantId)}">${escapeHtml(participant.name)}</option>`).join('');
 }
 
-function saveAction() {
+async function saveAction() {
   const form = app.querySelector('#action-form');
   const fields = new FormData(form);
   const action = form.dataset.action;
@@ -574,8 +614,10 @@ function saveAction() {
   } else if (action === 'participant') {
     const email = String(fields.get('email')).trim().toLowerCase();
     if (participants.some((person) => person.email.toLowerCase() === email)) { error.textContent = 'A participant with this email already exists.'; return; }
-    participants.push({ participantId: makeId('participant'), name: String(fields.get('name')).trim(), email, phone: '', organisation: String(fields.get('organisation')).trim() });
+    const participant = { participantId: makeId('participant'), name: String(fields.get('name')).trim(), email, phone: '', organisation: String(fields.get('organisation')).trim() };
+    participants.push(participant);
     saveCollection('participants', participants);
+    try { await apiRequest('participants', 'create', participant); } catch { /* localStorage remains the fallback */ }
   } else if (action === 'registration') {
     const event = events.find((item) => item.eventId === fields.get('eventId'));
     const participant = participants.find((item) => item.participantId === fields.get('participantId'));
